@@ -27,24 +27,40 @@ def generate_node_map(n:int,seed=42):
 
 def plot_cv_map(node_map,Hmap=101,Wmap=101):
 
-    imgmap = np.ones((Hmap,Wmap,3))
+    imgmap = np.ones((Hmap+50,Wmap,3))
     for node in node_map:
         cv2.circle(imgmap,node.pos,3,(255,0,0),-1)
     return imgmap
 
-def draw_connection(result_map,imagemap,waitkey=0):
+def generate_final_result(figure,image):
+    final_image = np.hstack([figure/255.0,image])
+    return final_image
+
+def draw_connection(result_map,imagemap,mid_distance=None):
     start = False
     node = result_map.result
     # for node in nodemap:
     while node.child is not None:
         if not start:
-            cv2.line(imagemap,node.pos,node.child.pos,(0,255,0),1)
+            cv2.line(imagemap,node.pos,node.child.pos,(255,0,0),1)
             start = True
+        elif node.child.child is None:
+            cv2.line(imagemap,node.pos,node.child.pos,(0,255,0),1)
         else:
             cv2.line(imagemap,node.pos,node.child.pos,(0,0,255),1)
-        cv2.imshow("Image Map",imagemap)
-        cv2.waitKey(waitkey)
         node = node.child
+    if mid_distance is not None:
+        imagemap = add_min_distance_result(imagemap,mid_distance)
+    return imagemap
+
+def add_min_distance_result(imagemap,distance):
+    h,w,_ = imagemap.shape
+    y_text = h - int((h-w)*0.4)
+    x_test = int(w*0.2)
+    contours = np.array( [ [0,w], [w,w], [w,h], [0,h] ] )
+    cv2.drawContours(imagemap, [contours], -1, color=(0, 0, 0), thickness=cv2.FILLED)
+    cv2.putText(imagemap,f"min Disance: {distance:.1f}",(x_test,y_text),fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(255, 255, 255), thickness=2)
+    
     return imagemap
 
 if __name__ == "__main__":

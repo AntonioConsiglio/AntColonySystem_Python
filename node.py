@@ -1,7 +1,7 @@
 from random import randint
-
+from config import POSITION_LIMIT
 GENERATED = set()
-POSITION_LIMIT = 400
+
 import numpy as np
 
 def generate_pos():

@@ -7,6 +7,7 @@ import random
 from copy import deepcopy
 from node import Node
 from typing import Optional
+import config
 
 import matplotlib.pyplot as plt
 
@@ -81,17 +82,28 @@ class BaseAntColonySystem(ACS):
 
         # Recall best path with min distance
         min_distance, _, best_path = heapq.heappop(self.results)
-        self.plot_distance_hisotry()
-        return min_distance, best_path
+        figure = self.plot_distance_hisotry()
+        return min_distance, best_path, figure
 
     def plot_distance_hisotry(self):
+        
         x = np.arange(self.max_iter)
         y = np.array(self.path_distance_result)
-
-        print(self.path_distance_result)
-
+        figure = plt.figure()
         plt.plot(x,y)
-        plt.show()
+        plt.xlabel("Iterations")
+        plt.ylabel("Distance")
+
+                # Rendering the figure onto a canvas
+        figure.set_size_inches(config.POSITION_LIMIT / figure.get_dpi(), (config.POSITION_LIMIT+50) / figure.get_dpi())
+        figure.canvas.draw()
+
+        # Get the RGB pixel values as a string and convert it to a numpy array
+        width, height = figure.canvas.get_width_height()
+        buffer = np.frombuffer(figure.canvas.tostring_rgb(), dtype=np.uint8)
+        image = buffer.reshape((height, width, 3))
+
+        return image  
     
     def initialize_adj_p_matrix(self,graph):
         
@@ -108,8 +120,9 @@ class BaseAntColonySystem(ACS):
         
         
     def update_pheromone(self,ant_paths):
-        update_loop = tqdm(ant_paths)
-        for n,(total_distance, _ ,ant_path) in enumerate(update_loop):
+        n,m,_ = self.adj_pheromone_matrix.shape
+        deltaTau = np.zeros((n,m))
+        for n,(total_distance, _ ,ant_path) in enumerate(ant_paths):
             # update_loop.set_description(desc=f"update_loop {n}: ")
             result =  ant_path.result
             while result.child is not None:
@@ -117,10 +130,12 @@ class BaseAntColonySystem(ACS):
                 result = result.child
                 childid = self.graph_index[result]
                 if lid > childid:
-                    self.adj_pheromone_matrix[childid,lid,1] = self.adj_pheromone_matrix[childid,lid,1]*(1-self.p_decay) + self.Q / total_distance
+                    deltaTau[childid,lid]  += self.Q / total_distance
                 else:
-                    self.adj_pheromone_matrix[lid,childid,1] = self.adj_pheromone_matrix[lid,childid,1]*(1-self.p_decay) + self.Q / total_distance
-        
+                    deltaTau[lid,childid]  += self.Q / total_distance
+
+        self.adj_pheromone_matrix[:,:,1] *= (1-self.p_decay) 
+        self.adj_pheromone_matrix[:,:,1] += deltaTau
 
     def single_ant_path(self, ant, graph:list[Node]):
         path_result = PathResult()
