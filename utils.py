@@ -1,17 +1,22 @@
-# generate an initial candidate
-
-# Get an initial temperauure
-
-# Iterate for a Numnber of Iteration
-# Sample from a symmetrical distibution (Normal distrinbuton)
-# add the sampled value to the initial candidate
-# calculate a probability p equal to exp(deltaH/T)  h is the euristic function
-# Accept the new x if the probability of x' (p) is greater than u
-# Update the temperature with and alpha decay (0-1)
 from node import Node
 import cv2
 import numpy as np
 import random
+import os
+from datetime import datetime
+from shutil import copy
+import config
+
+EXP_PATH = "./experimets"
+
+
+def save_experiment_result(image):
+    exp_path = os.path.join(EXP_PATH,datetime.today().strftime('%Y%m%d_%H%M%S'))
+    os.makedirs(exp_path,exist_ok=True)
+    filename = os.path.join(exp_path,"plot.png")
+    cv2.imwrite(filename,(image*255).astype(int))
+    copy(os.path.join(os.getcwd(),"config.py"),os.path.join(exp_path,"config.py"))
+
 
 def generate_node_map(n:int,seed=42):
 
@@ -26,42 +31,77 @@ def generate_node_map(n:int,seed=42):
 
 
 def plot_cv_map(node_map,Hmap=101,Wmap=101):
-
-    imgmap = np.ones((Hmap+50,Wmap,3))
+    h = Hmap+50
+    w = Wmap
+    imgmap = np.ones((h,w,3))
     for node in node_map:
-        cv2.circle(imgmap,node.pos,3,(255,0,0),-1)
+        cv2.circle(imgmap,node.pos,config.CIRCLE_RADIUS,(255,0,0),-1)
+    contours = np.array( [ [0,w], [w,w], [w,h], [0,h] ] )
+    imgmap = cv2.drawContours(imgmap, [contours], -1, color=(0, 0, 0), thickness=cv2.FILLED)
     return imgmap
 
 def generate_final_result(figure,image):
     final_image = np.hstack([figure/255.0,image])
     return final_image
 
-def draw_connection(result_map,imagemap,mid_distance=None):
+def draw_connection(result_map,imagemap,mid_distance=None,best_iteration=None):
     start = False
     node = result_map.result
     # for node in nodemap:
     while node.child is not None:
         if not start:
-            cv2.line(imagemap,node.pos,node.child.pos,(255,0,0),1)
+            cv2.line(imagemap,node.pos,node.child.pos,(255,0,0),2)
             start = True
         elif node.child.child is None:
-            cv2.line(imagemap,node.pos,node.child.pos,(0,255,0),1)
+            cv2.line(imagemap,node.pos,node.child.pos,(0,255,0),2)
         else:
             cv2.line(imagemap,node.pos,node.child.pos,(0,0,255),1)
         node = node.child
+
     if mid_distance is not None:
-        imagemap = add_min_distance_result(imagemap,mid_distance)
+        imagemap = add_text_result(imagemap,f"Min Distance: {mid_distance:.1f}",0.1)
+    if best_iteration is not None:
+        imagemap = add_text_result(imagemap,f"Best Iter: {best_iteration}",0.6)
+
     return imagemap
 
-def add_min_distance_result(imagemap,distance):
+def add_text_result(imagemap,text,pos_ratio):
     h,w,_ = imagemap.shape
     y_text = h - int((h-w)*0.4)
-    x_test = int(w*0.2)
-    contours = np.array( [ [0,w], [w,w], [w,h], [0,h] ] )
-    cv2.drawContours(imagemap, [contours], -1, color=(0, 0, 0), thickness=cv2.FILLED)
-    cv2.putText(imagemap,f"min Disance: {distance:.1f}",(x_test,y_text),fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(255, 255, 255), thickness=2)
+    x_test = int(w*pos_ratio)
+    cv2.putText(imagemap,text,(x_test,y_text),fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.7, color=(255, 255, 255), thickness=2)
     
     return imagemap
+
+import time
+
+def average_runtime(count=10):
+
+    def decorator(func):
+        counter = 0
+        total_time = 0
+        
+        def wrapper(*args, **kwargs):
+            nonlocal counter, total_time
+            
+            start_time = time.time()
+            result = func(*args, **kwargs)
+            end_time = time.time()
+            
+            counter += 1
+            total_time += end_time - start_time
+            
+            if counter % count == 0:
+                avg_time = total_time / count
+                print(f"\nAverage runtime of {func.__name__}: {avg_time*1000:.2f} ms over last {count} calls")
+                total_time = 0
+            
+            return result
+        
+        return wrapper
+    
+    return decorator
+
 
 if __name__ == "__main__":
 
@@ -75,3 +115,5 @@ if __name__ == "__main__":
     imagmap = draw_connection(nodemap,imagmap)
     cv2.imshow("Image Map",imagmap)
     cv2.waitKey(0)
+
+
