@@ -1,5 +1,7 @@
 # ACS implemented in python
 
+![example](https://github.com/AntonioConsiglio/AntColonySystem_Python/blob/main/gif/example.gif)
+
 ACS (Ant Colony System) is a metaheuristic algorithm inspired by the foraging behavior of ants. It's designed to find high-quality solutions to the Traveling Salesman Problem, a classic optimization problem where the goal is to find the shortest possible route that visits each city exactly once and returns to the original city.
 
 
