@@ -8,14 +8,17 @@ from shutil import copy
 import config
 
 EXP_PATH = "./experimets"
+global LAST_CREATED_PATH
+LAST_CREATED_PATH = None
 
-
-def save_experiment_result(image):
-    exp_path = os.path.join(EXP_PATH,datetime.today().strftime('%Y%m%d_%H%M%S'))
-    os.makedirs(exp_path,exist_ok=True)
-    filename = os.path.join(exp_path,"plot.png")
+def save_experiment_result(image,iter):
+    global LAST_CREATED_PATH
+    if LAST_CREATED_PATH is None:
+        LAST_CREATED_PATH = os.path.join(EXP_PATH,datetime.today().strftime('%Y%m%d_%H%M%S'))
+        os.makedirs(LAST_CREATED_PATH,exist_ok=True)
+    filename = os.path.join(LAST_CREATED_PATH,f"plot_{iter}.png")
     cv2.imwrite(filename,(image*255).astype(int))
-    copy(os.path.join(os.getcwd(),"config.py"),os.path.join(exp_path,"config.py"))
+    copy(os.path.join(os.getcwd(),"config.py"),os.path.join(LAST_CREATED_PATH,"config.py"))
 
 
 def generate_node_map(n:int,seed=42):
@@ -55,7 +58,7 @@ def draw_connection(result_map,imagemap,mid_distance=None,best_iteration=None):
         elif node.child.child is None:
             cv2.line(imagemap,node.pos,node.child.pos,(0,255,0),2)
         else:
-            cv2.line(imagemap,node.pos,node.child.pos,(0,0,255),1)
+            cv2.line(imagemap,node.pos,node.child.pos,(0,0,0),1)
         node = node.child
 
     if mid_distance is not None:
@@ -65,6 +68,20 @@ def draw_connection(result_map,imagemap,mid_distance=None,best_iteration=None):
 
     return imagemap
 
+def draw_pheromone(nodes,imagemap,pheromone_matrix:np.ndarray):
+    
+    max_pheromone = pheromone_matrix.max()
+
+    image = imagemap.copy()
+    for n,node in enumerate(nodes):
+        for np, child_node in  enumerate(nodes[n+1:],start=n+1):
+            p_value = pheromone_matrix[n,np]
+            linesize = (20/max_pheromone**1.3) * p_value**1.3
+            if linesize < 1: continue
+            cv2.line(image,node.pos,child_node.pos,(0,0,50),int(linesize))
+    imagemap = cv2.addWeighted(image,0.2,imagemap,0.8,0)
+    return imagemap
+    
 def add_text_result(imagemap,text,pos_ratio):
     h,w,_ = imagemap.shape
     y_text = h - int((h-w)*0.4)

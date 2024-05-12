@@ -95,21 +95,28 @@ class BaseAntColonySystem(ACS):
             iter_loop.set_postfix(curr_min_distance = distance)
             self.path_distance_result.append(distance)
             heapq.heappush(self.results,(distance,iter,path))
-        
+
+            if iter % config.OUTPUT_STEP == 0:
+                # Recall best path with min distance
+                min_distance, best_iteration, best_path = heapq.heappop(self.results)
+                figure = self.plot_distance_hisotry(iter)
+                heapq.heappush(self.results,(min_distance,best_iteration,best_path))
+                yield iter,min_distance, best_path, figure, best_iteration
+                    
         # Recall best path with min distance
         min_distance, best_iteration, best_path = heapq.heappop(self.results)
-        figure = self.plot_distance_hisotry()
-        return min_distance, best_path, figure, best_iteration
+        figure = self.plot_distance_hisotry(iter)
+        yield iter,min_distance, best_path, figure, best_iteration
 
-    def plot_distance_hisotry(self):
+    def plot_distance_hisotry(self,iter):
         
-        x = np.arange(self.max_iter)
+        x = np.arange(iter)
         y = np.array(self.path_distance_result)
         figure = plt.figure()
         plt.plot(x,y)
         plt.xlabel("Iterations")
         plt.ylabel("Distance")
-        plt.title(f"Result of {self.__class__.__name__} - ACS Symmetric SM problem")
+        plt.title(f"Result of {self.__class__.__name__} - ACS Symmetric TSP problem")
         # Rendering the figure onto a canvas
         figure.set_size_inches(config.POSITION_LIMIT / figure.get_dpi(), (config.POSITION_LIMIT+50) / figure.get_dpi())
         figure.canvas.draw()
@@ -117,6 +124,7 @@ class BaseAntColonySystem(ACS):
         width, height = figure.canvas.get_width_height()
         buffer = np.frombuffer(figure.canvas.tostring_rgb(), dtype=np.uint8)
         image = buffer.reshape((height, width, 3))
+        plt.close(figure)
 
         return image  
     
